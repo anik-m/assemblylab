@@ -18,6 +18,7 @@ data segment
     divq dw ?          ; define a variable for the quotient of the division
     divr dw ?          ; define a variable for the remainder of the division
     s db 0             ; define a variable to store the status of the input (valid/invalid)
+    signext dw 0
     msg1 db 'Give 1st 16 bit number in binary:',spa,'$'  ; define message for user input
     msg2 db 'Give 2nd 16 bit number in binary:',spa,'$'  ; define message for user input
     msg3 db 'Not a valid 16 bit number. Run program again with an 16 bit number','$'     ; define error message 
@@ -31,6 +32,8 @@ data segment
     msg12 db 'Give 2nd 16 bit number in Hexadecimal:',spa,'$'  ; define message for user input
     str1 db 20 dup('$')                  ; define a buffer for hexadecimal representation of input
     str2 db 20 dup('$')                  ; define a buffer for hexadecimal representation of input
+    strb1 db 20 dup('$')                  ; define a buffer for binary representation of input
+    strb2 db 20 dup('$')                  ; define a buffer for binary representation of input
 data ends
 
 code segment           ; start of code segment
@@ -47,77 +50,94 @@ start:                  ; start of program
     cmp s,01h           ; check the status variable s to see if input was valid
     je error            ; jump to error message if input was invalid
     
+    mov ax, num1        ;moving number1(dividend) to ax register
+    mov signext,ax      ;moving number1(dividend) to signext
+    mov bx,01h          ;moving 1 to bx
+    shl bx,15           ;shifting bx left 15 times to put 1 in msb position
+    and signext,bx      ;doing AND with 128d to store msb 
+    
     printstring msg4   ; print new line
     printstring msg12  ; print message for 2nd user input
     mov di,offset num2 ; set di to point to the second number input variable
     call readnumhex    ; call readnumhex to read the first hexadecimal number from input 
     ;call readnum16bit
-
     cmp s,01h          ; compare s with 1 (indicates an error)
     je error           ; if s is 1, jump to error
 
-printstring msg4   ; print a message to the console
-printstring msg8   ; print another message to the console
-mov ax, num1       ; move the first number to ax
-mov si, offset str1 ; point si to str1
-call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
-printstring str1   ; print the result to the console
+    
+                       ;for printing the numbers for confirmation
+    printstring msg4   ; print a message to the console
+    printstring msg8   ; print another message to the console
+    mov ax, num1       ; move the first number to ax
+    mov si, offset str1 ; point si to str1
+    call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
+    printstring str1   ; print the result to the console
 
-printstring msg4   ; print another message to the console
-printstring msg9   ; print another message to the console
-mov ax, num2       ; move the second number to ax
-mov si, offset str1 ; point si to str1
-call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
-printstring str1   ; print the result to the console
+    printstring msg4   ; print another message to the console
+    printstring msg9   ; print another message to the console
+    mov ax, num2       ; move the second number to ax
+    mov si, offset str1 ; point si to str1
+    call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
+    printstring str1   ; print the result to the console
+    
+    
+                       ;finding signed product
+    mov ax, num1       ; move the first number to ax
+    mov dx,00          ; set dx to 0
+    imul num2          ; multiply the two numbers and store the result in ax
+    mov mulup,dx       ; move the upper word of the result to mulup
+    mov muldo,ax       ; move the lower word of the result to muldo
+                       
+                       ;printing product
+    printstring msg4   ; print another message to the console
+    printstring msg5   ; print another message to the console
+    mov ax, mulup      ; move the upper word of the result to ax
+    mov si, offset str1 ; point si to str1
+    call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
+    printstring str1   ; print the result to the console
 
-mov ax, num1       ; move the first number to ax
-mov dx,00          ; set dx to 0
-imul num2          ; multiply the two numbers and store the result in ax
-mov mulup,dx       ; move the upper word of the result to mulup
-mov muldo,ax       ; move the lower word of the result to muldo
-
-printstring msg4   ; print another message to the console
-printstring msg5   ; print another message to the console
-mov ax, mulup      ; move the upper word of the result to ax
-mov si, offset str1 ; point si to str1
-call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
-printstring str1   ; print the result to the console
-
-mov ax, muldo      ; move the lower word of the result to ax
-mov si, offset str1 ; point si to str1
-call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
-printstring str1   ; print the result to the console
-
-mov ax, num1       ; move the first number to ax
-mov dx,00          ; set dx to 0
-idiv num2          ; divide the two numbers and store the quotient in ax and the remainder in dx
-mov divq,ax        ; move the quotient to divq
-mov divr,dx        ; move the remainder to divr
-
-printstring msg4   ; print another message to the console
-printstring msg6   ; print another message to the console
-mov ax, divq       ; move the quotient to ax
-mov si, offset str1 ; point si to str1
-call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
-printstring str1   ; print the result to the console
-
-printstring msg4   ; print another message to the console
-printstring msg7   ; print another message to the console
-mov ax, divr       ; move the remainder to ax
-mov si, offset str1 ; point si to str1
-call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
-printstring str1   ; print the result to the console
-jmp end            ; jump to the end of the program
-
-error:             ; if there is error , print error message
-printstring msg3    
+    mov ax, muldo      ; move the lower word of the result to ax
+    mov si, offset str1 ; point si to str1
+    call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
+    printstring str1   ; print the result to the console
+    
+                       
+                       ;finding signed division result
+    mov ax, num1       ; move the first number to ax
+    cmp signext,00
+    jne dxff
+    mov dx,00          ; set dx to 0
+division:
+    idiv num2          ; divide the two numbers and store the quotient in ax and the remainder in dx
+    mov divq,ax        ; move the quotient to divq
+    mov divr,dx        ; move the remainder to divr
+        
+    printstring msg4   ; print another message to the console
+    printstring msg6   ; print another message to the console
+    mov ax, divq       ; move the quotient to ax
+    mov si, offset str1 ; point si to str1
+    call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
+    printstring str1   ; print the result to the console
+    
+    printstring msg4   ; print another message to the console
+    printstring msg7   ; print another message to the console
+    mov ax, divr       ; move the remainder to ax
+    mov si, offset str1 ; point si to str1
+    call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
+    printstring str1   ; print the result to the console
+    jmp end            ; jump to the end of the program
+    
+error:                 ; if there is error , print error message
+    printstring msg3    
         
     
 end:  
     mov ah,4ch           ;end program
     mov dx,00		    ;error code is 0 for successful termination
     int 21h		        ;calling dos
-    
+dxff:
+    mov dx,0ffffh
+    jmp division    
     
 readnum16bit proc
     mov cx,00h          ; set counter for loop to 0
@@ -185,6 +205,9 @@ errorh:
     ret           ; Return from the procedure
 
     
+
+
+
 h2ah proc                        ;procedure to change from binary to hexa
     
     pusha                        ;saving registers for possible later use
