@@ -18,13 +18,16 @@ data segment
     divq dw ?          ; define a variable for the quotient of the division
     divr dw ?          ; define a variable for the remainder of the division
     s db 0             ; define a variable to store the status of the input (valid/invalid)
+    negind db 0
+    decind dw 0ah
+    tempstore dw ?
     msg1 db 'Give 1st 16 bit number in binary:',spa,'$'  ; define message for user input
     msg2 db 'Give 2nd 16 bit number in binary:',spa,'$'  ; define message for user input
     msg3 db 'Not a valid 16 bit number. Run program again with an 16 bit number','$'     ; define error message 
     msg4 db cr,nl,'$'  ; define message for new line  
-    msg5 db 'Signed product in Hexadecimal: ','$'       ; define message for multiplication result
-    msg6 db 'Signed quotient in Hexadecimal: ','$'      ; define message for division quotient
-    msg7 db 'Signed remainder in Hexadecimal: ','$'     ; define message for division remainder
+    msg5 db 'Signed product : ','$'       ; define message for multiplication result
+    msg6 db 'Signed quotient : ','$'      ; define message for division quotient
+    msg7 db 'Signed remainder : ','$'     ; define message for division remainder
     msg8 db 'First number: ','$'         ; define message for the first number input
     msg9 db 'Second number: ','$'        ; define message for the second number input
     msg11 db 'Give 1st 16 bit number in Hexadecimal(XXXX):',spa,'$'  ; define message for user input
@@ -47,8 +50,8 @@ start:                  ; start of program
     call readnum
     ;call readnumhex     ; read hexadecimal input and store in num1 variable
     ;call readnum16bit
-    cmp s,01h           ; check the status variable s to see if input was valid
-    je error            ; jump to error message if input was invalid
+    ;cmp s,01h           ; check the status variable s to see if input was valid
+    ;je error            ; jump to error message if input was invalid
     
         
     printstring msg4   ; print new line
@@ -57,8 +60,8 @@ start:                  ; start of program
     call readnum
     ;call readnumhex    ; call readnumhex to read the first hexadecimal number from input 
     ;call readnum16bit
-    cmp s,01h          ; compare s with 1 (indicates an error)
-    je error           ; if s is 1, jump to error
+    ;cmp s,01h          ; compare s with 1 (indicates an error)
+    ;je error           ; if s is 1, jump to error
     
                        ;for printing the numbers for confirmation
     printstring msg4   ; print a message to the console
@@ -69,7 +72,7 @@ start:                  ; start of program
     mov si, offset str1 ; point si to str1
     call h2ad
     ;call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
-    ;printstring str1   ; print the result to the console
+    printstring str1   ; print the result to the console
 
     printstring msg4   ; print another message to the console
     printstring msg9   ; print another message to the console
@@ -79,7 +82,7 @@ start:                  ; start of program
     mov si, offset str1 ; point si to str1
     call h2ad
     ;call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
-    ;printstring str1   ; print the result to the console
+    printstring str1   ; print the result to the console
     
     
                        ;finding signed product
@@ -100,10 +103,10 @@ start:                  ; start of program
     ;printstring str1   ; print the result to the console
 
     mov ax, muldo      ; move the lower word of the result to ax
-    ;mov si, offset str1 ; point si to str1
+    mov si, offset str1 ; point si to str1
     call h2ad
     ;call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
-    ;printstring str1   ; print the result to the console
+    printstring str1   ; print the result to the console
     
                        
                        ;finding signed division result
@@ -122,17 +125,17 @@ division:
     mov si, offset str1 ; point si to str1
     call h2ad
     ;call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
-    ;printstring str1   ; print the result to the console
+    printstring str1   ; print the result to the console
     
     printstring msg4   ; print another message to the console
     printstring msg7   ; print another message to the console
     ;mov dx,00
     mov ax, divr       ; move the remainder to ax
     cwd
-    ;mov si, offset str1 ; point si to str1
+    mov si, offset str1 ; point si to str1
     call h2ad
     ;call h2ah          ; call h2ah to convert the number to hexadecimal and store it in str1
-    ;printstring str1   ; print the result to the console
+    printstring str1   ; print the result to the console
     jmp end            ; jump to the end of the program
     
 error:                 ; if there is error , print error message
@@ -146,52 +149,39 @@ end:
 
 
 ; procedure for reading 4-digit signed number from keyboard
-; number will be held in SI
-readnum proc  near
-    mov	cx, 04                      
-    mov bx, 0ah                     
-    mov si, 00                      
-    mov ah, 01h                     
-    int 21h                         
-    cmp al, '-'
-    jne start1 
-loop1:				    	        
-    mov	ah, 01h         		    
-    int	21h             		    
-    sub al, '0'         		     
-    mov ah, 00h                     
-    add si, ax                   	
-    cmp cx, 01
-    je  nomul1                      
-    mov ax, si                   
-    mul bx                          
-    mov si, ax
-nomul1:                              
-    loop    loop1
-    neg si                              
-    jmp second
-start1:
-    dec cx
-    and al, 0fh         		    
-    mov ah, 00h                                        
-    mul bx                          
-    mov si, ax
-loop2:				    	        
-    mov	ah, 01h         		    
-    int	21h             		    
-    and al, 0fh         		     
-    mov ah, 00h                     
-    add si, ax                   	
-    cmp cx, 01
-    je  nomul2                      
-    mov ax, si                   
-    mul bx                          
-    mov si, ax
-nomul2:                              
-    loop    loop2
-second:
-    mov [di],si
-    ret
+; number will be held in [di]
+readnum proc near
+	mov bx,00
+	mov cx,00
+	mov negind,00
+m1:
+	mov ah,01h
+	int 21h
+	cmp al,'-'
+	je negate
+	sub al,'0'
+	mov ah,00
+	add bx,ax
+	cmp cx,03h
+	je doneread
+	inc cx
+	mov ax,bx
+	mul decind
+	mov bx,ax
+	jmp m1
+
+doneread:
+	cmp negind,01h
+	je negform
+send:
+	mov [di],bx
+	ret
+negate:
+	mov negind,01h
+	jmp m1
+negform:
+	neg bx
+	jmp send
 readnum endp
 
 readnum16bit proc
@@ -265,81 +255,60 @@ errorh:
 readnumhex endp
 
 ; procedure for displaying signed number
-; number is held in DX:AX
-h2ad proc  near
-    test    dx, dx         
-    jns     skip           
-    neg     dx
-    neg     ax             
-    sbb     dx, 0  
-    push    ax 
-    push    dx            
-    mov     dl, '-'
-    mov     ah, 02h        
-    int     21h            
-    pop     dx 
-    pop     ax             
-skip:
-    mov     bx, 10         
-    push    bx             
-rpt1:
-    mov     cx, ax         
-    mov     ax, dx         
-    xor     dx, dx         
-    div     bx             
-    xchg    ax, cx         
-    div     bx            
-    push    dx             
-    mov     dx, cx        
-    or      cx, ax         
-    jnz     rpt1           
-    pop     dx            
-rpt2:
-    add     dl, '0'       
-    mov     ah, 02h       
-    int     21h          
-    pop     dx           
-    cmp     dx, bx       
-    jne     rpt2         
-    ret
+; number is held in DX:AX, string offset in si
+h2ad proc near
+	test dx,dx
+	jns onlynum
+
+	not dx
+	neg ax
+
+	mov bl,'-'
+	mov [si],bl
+	inc si
+
+onlynum:
+	mov cx,00
+digitseparate:
+	mov tempstore, ax       ;storing lower word in tempstore
+	mov ax,dx               ;moving upper word to ax     
+	xor dx,dx               ;converting dx:ax into 00:ax for the sake of division      
+
+	div decind              ;so upper word in ax to be divided to obtain quotient                             
+							;and remainder of upper portion of number      
+
+	xchg ax,tempstore       ;we exchange values to place lower word in ax again                             
+							;to obtain dx:ax = remainder:lower word which would've happened                             
+							;for normal division so that we can divide it further                             
+							;and we place first part of quotient in tempstore      
+
+	div decind              ;dividing it further to obtain 2nd part of quotient and last remainder      
+
+	add dx,'0'              ;adding 30h to convert remainder into decimal digit     
+	push dx                 ;pushing converted remainder to stack     
+	inc cx                  ;counter keeping tabs on how many digits are pushed      
+
+	mov dx,tempstore        ;moving 1st part of quotient to dx for next iteration, should it come     
+	or tempstore, ax        ;tempstore = tempstore OR ax                             
+							;checking if there is any quotient at all     
+
+	cmp tempstore,00        ;by comparing logical OR of first and 2nd part of quotient to zero      
+
+	jne digitseparate       ;if it isn't zero we do the whole upper process under digitseparate                             
+							;again to obtain next digit  
+
+digittostring:     
+	pop dx     
+	mov [si],dl     
+	inc si     
+	loop digittostring      
+
+	mov [si],'$' 
+	ret
+
 h2ad endp
 
-h2ah proc                        ;procedure to change from binary to hexa
-    
-    pusha                        ;saving registers for possible later use
-    ;push si
-    mov cx,04
-mark1:
-    mov bx,0fh
-    and bx,ax
-    cmp bx,09h
-    jg letteradd
-    add bx,'0'
-    push bx
- afteradd:
-    shr ax,4
-    loop mark1
-    
-    mov cx,04
-    
-mark2:
-    pop ax                       ;pop digits from stack
-    mov [si],ax                  ;poped digits are added to the result string
-    inc si                       ;move to next position in string
-    loop mark2                   ;repeat above process until all digits are in
-                                 ;result string
-    
-    mov [si],'$'                 ;append dollar sign to terminate string
-    
-    ;pop si
-    popa                       ;retrieving resister values
-    ret
-    
-letteradd:                     ;adding 37h or 55d to get 10=A(65d), 11=B(66d) and so on
-    add bx,37h
-    push bx
-    jmp afteradd
-h2ah endp 
+
     
 code ends               ;end of code segment
 end start               ;end of program
