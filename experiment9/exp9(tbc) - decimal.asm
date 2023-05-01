@@ -14,78 +14,68 @@ printchar macro char   ; macro definition for printing char
     ;pop ax
 endm
 
-
 readnumdeci macro n
-    ;mov dx,00
-    mov ah,01h
-    int 21h
-    sub al,'0'
-    cmp al,0ah
-    jge error
-    mov ah,00
-    mov bx,3E8h
-    mul bx
-    mov n,ax
+    ; Read first digit from user
+    mov ah, 01h      ; Function number for ASCII input
+    int 21h          ; Call DOS
+    sub al, '0'      ; Extracting digit by subtracting '0' or 30h
+    mov ah, 00       ; Set AH to 0
+    mov bx, 3E8h     ; BX = 1000d
+    mul bx           ; AX = AL * BX (Multiplying by 1000d to obtain 1000's place)
+    mov n, ax        ; n is the number to be taken as input
     
-    ;mov dx,00
-    mov ah,01h           ;function number for ascii input
-    int 21h              ;calling dos
-    sub al,'0'           ;extracting digit by subtracting '0' or 30h
-    cmp al,0ah
-    jge error
-    mov bl,64h           ; 
-    mul bl               ;multiplying by 100d to obtain 100's place 
-    add n,ax             ;n is the number to be taken as input
+    ; Read second digit from user
+    mov ah, 01h      ; Function number for ASCII input
+    int 21h          ; Call DOS
+    sub al, '0'      ; Extracting digit by subtracting '0' or 30h
+    mov bl, 64h      ; BL = 100d
+    mul bl           ; AX = AL * BL (Multiplying by 100d to obtain 100's place)
+    add n, ax        ; Add 100's place to n
     
-             
-    mov ah, 01h           ; input again
-    int 21h
-    sub al,'0'
-    cmp al,0ah
-    jge error          
-    mov bl,0ah            
-    mul bl                ; multiply by 10d for 10's place value
-    add n, ax            ;adding 10's place value
+    ; Read third digit from user
+    mov ah, 01h      ; Function number for ASCII input
+    int 21h          ; Call DOS
+    sub al, '0'      ; Extracting digit by subtracting '0' or 30h
+    ;mov ah, 00       ; Set AH to 0
+    mov bl, 0Ah      ; BL = 10d
+    mul bl           ; AX = AL * BL (Multiplying by 10d to obtain 10's place)
+    add n, ax        ; Add 10's place to n
     
-    mov ah, 01h
-    int 21h
-    sub al,'0'
-    cmp al,0ah
-    jge error
-    mov ah,00
-    add n, ax           ;adding 1's place value
+    ; Read fourth digit from user
+    mov ah, 01h      ; Function number for ASCII input
+    int 21h          ; Call DOS
+    sub al, '0'      ; Extracting digit by subtracting '0' or 30h
+    mov ah, 00       ; Set AH to 0
+    add n, ax        ; Add 1's place to n
 endm
+
+
 
 data segment
     cr equ 0dh         ; define carriage return character
     nl equ 0ah         ; define new line character
-    spa equ 20h        ; define space character
-    tab equ 09h        ; define tab character
-    num1 dw ?
-    num2 dw ?  
-    s db 0 
-    decind dw 0ah
-    tempstore dw ?
-    msg1 db 'Give 1st 16 bit number in hexadecimal:',spa,'$'  ; define message for user input
-    msg2 db 'Give 2nd 16 bit number in hexadecimal:',spa,'$'  ; define message for user input 
-    msg3 db 'Not a valid number. Run program again with an valid number','$'     ; define error message 
+    ;spa equ 20h        ; define space character
+    ;tab equ 09h        ; define tab character
+    num1 dw ?          ; define variable for number 1
+    num2 dw ?          ; define variable for number 2
+    decind dw 0ah      ; define variable for storing 10d for use in division
+    tempstore dw ?     ; define variable for temporary storage
+    msg1 db 'Give 1st 16 bit(4-digit) number : $'  ; define message for user input
+    msg2 db 'Give 2nd 16 bit(4-digit) number : $'  ; define message for user input 
     msg4 db cr,nl,'$'  ; define message for new line 
-    msg5 db '1st number: $'
-    msg6 db '2nd number: $'
-    msg7 db 'Sum: $'
-    msg8 db 'Difference: $'
-    msg9 db 'Product: $'
-    msg10 db 'Give 1st 16 bit(4 digit) number in decimal:',spa,'$'  ; define message for user input
-    msg11 db 'Give 2nd 16 bit(4 digit) number in decimal:',spa,'$'  ; define message for user input
-    str db 10 dup(?) 
+    ;msg5 db '1st number: $'  ;define message to display number 1
+    ;msg6 db '2nd number: $'  ;define message to display number 2
+    msg7 db 'Sum: $'         ;define message to display sum
+    msg8 db 'Difference: $'  ;define message to display difference
+    msg9 db 'Product: $'     ;define message to display product
+    str db 10 dup(?)         ;define string for use as buffer
 data ends 
 
 extra segment 
-    sum dw ?
-    carry db ?
-    diff dw ?
-    prodl dw ?
-    prodh dw ?
+    sum dw ?            ;define variable to store sum
+    diff dw ?           ;define variable to store difference
+    prodl dw ?          ;define variable to store product upper word
+    prodh dw ?          ;define variable to store product lower word
 extra ends
 
 code segment           ; start of code segment
@@ -98,32 +88,32 @@ start:                  ; start of program
     mov es,ax           ; set es register to point to extra segment
     
     
-    printstring msg10   ;message for decimal input
-    readnumdeci num1
+    printstring msg1   ;message for decimal input
+    readnumdeci num1   ;calling macro to take input
     
     
-    printstring msg4
+    printstring msg4   ;message for newline
     
-    printstring msg11   ;message for decimal 2nd input
+    printstring msg2   ;message for decimal 2nd input
     
-    readnumdeci num2
+    readnumdeci num2   ;calling macro to take input
     
     
-    printstring msg4
-    mov ax,num1
-    mov si,offset str
+    ;printstring msg4   ;message for newline
+    ;mov ax,num1
+    ;mov si,offset str
+    ;mov dx,00
+    ;call h2adec
+    ;printstring msg5
+    ;printstring str
     
-    call h2ad
-    printstring msg5
-    printstring str
-    
-    printstring msg4
-    mov ax,num2
-    mov si,offset str
-    
-    call h2ad
-    printstring msg6
-    printstring str
+    ;printstring msg4   ;message for newline
+    ;mov ax,num2
+    ;mov si,offset str
+    ;mov dx,00
+    ;call h2adec
+    ;printstring msg6
+    ;printstring str
     
 addnum:
     mov ax,num1
@@ -143,7 +133,7 @@ multinum:
     mov es:prodl,ax
     
 printsum:
-    printstring msg4
+    printstring msg4   ;message for newline
     printstring msg7
     
     mov dx,00
@@ -154,7 +144,7 @@ printsum:
     printstring str
     
 printdiff:
-    printstring msg4
+    printstring msg4   ;message for newline
     printstring msg8
     
     mov dx,00
@@ -174,7 +164,7 @@ printdiff:
     printstring str
 
 printproduct:        
-    printstring msg4
+    printstring msg4   ;message for newline
     printstring msg9
     
     
@@ -185,12 +175,7 @@ printproduct:
     call h2adec
     printstring str
     
-    jmp end
     
-error:             ; if there is error , print error message
-    printstring msg4
-    printstring msg3
-
 end:  
     mov ah,4ch           ;end program
     mov dx,00		    ;error code is 0 for successful termination
@@ -205,69 +190,7 @@ makecomplement:
     jmp diffprocessing
     
 
-;readnumdec proc
-;    pusha
-;    
-;    mov bx,00
-;    ;mov dx,0ah
-;    mov cx,00
-;    
-;ld1:
-;    mov ah,01h
-;    int 21h
-;    sub al,'0'
-;    cmp al, 0ah
-;    jge errord
-;    
-;   add bl,al
-;    cmp cx,03h
-;    je ld2
-;    
-;    mov ax,bx
-;    mul decind
-;    mov bx,ax
-;    inc cx
-;    jmp ld1
-;
-;ld2:
-;    mov [di],bx    ; Store the final value in the memory location pointed to by "di"
-;    ret            ; Return from the procedure
-;    
-;errord:
-;    mov s,01h      ; Set an error flag if a non-decimal digit is read
-;    ret            ; Return from the procedure
-    
-h2ad proc                        ;procedure to change from binary to dec
-    
-    ;pusha                        ;saving registers for possible later use
-    ;push si
-    mov cx,00
-    mov bx,0ah
-markd1:
-    mov dx,00
-    div bx
-    add dx,'0'
-    push dx
-    inc cx
-    cmp ax,00
-    jne markd1
-    
-    
-markd2:
-    pop ax                       ;pop digits from stack
-    mov [si],ax                  ;poped digits are added to the result string
-    inc si                       ;move to next position in string
-    loop markd2                   ;repeat above process until all digits are in
-                                 ;result string
-    
-    mov [si],'$'                 ;append dollar sign to terminate string
-    
-    ;pop si
-    ;popa                       ;retrieving resister values
-    ret
-
-
-h2adec proc                  ;procedure to convert 32 bit number to ascii values corresponding to decimal value
+h2adec proc near                 ;procedure to convert 32 bit number to ascii values corresponding to decimal value
     pusha
     mov cx,00
 digitseparate:
@@ -307,11 +230,7 @@ digittostring:
     
     popa
     ret
-     
- 
- 
+h2adec endp
+
 code ends               ;end of code segment
 end start               ;end of program
-     
-
-
