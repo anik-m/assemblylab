@@ -7,17 +7,17 @@ endm
 data segment
     cr equ 0dh
     nl equ 0ah
-    space equ 20h 
+    ;space equ 20h 
     string1 db 100 dup('$')
     rstring1 db 100 dup('$')
     length db 0   
-    lst db 10 dup('$')
-    half db ?
-    msg1 db 'Give string for processing: $'
-    msg2 db cr,nl,'$'
-    msg3 db 'The string is a pallindrome.$'
-    msg4 db 'The string is not a pallindrome.$'
-    msg5 db 'Reversed string: $' 
+    ;lst db 10 dup('$')
+    ;half db ?
+    msg1 db 'Give string for processing: $'    ;define message for prompt
+    msg2 db cr,nl,'$'                         ;define message for newline
+    msg3 db 'The string is a pallindrome.$'    ;define message for indication
+    msg4 db 'The string is not a pallindrome.$';define message for indication
+    msg5 db 'Reversed string: $'               ;define message for indication
 data ends
 
 code segment           ; start of code segment
@@ -31,35 +31,35 @@ start:                  ; start of program
     printstring msg1
     
 reads:
-    mov ah,01h
-    int 21h
-    cmp al, cr
-    je next
-    inc length
-    mov ah,0
-    push ax
-    mov [si],al
-    inc si
-    jmp reads
+    mov ah,01h           ; set function code for reading char
+    int 21h              ;calling dos
+    cmp al, cr           ;comparing obtained character with cr
+    je next              ;if it is obtained, input taing is stopped
+    inc length           ;length variable is increased to show length
+    mov ah,0             ;clear ah to ensure ax represents al, or the read character
+    push ax              ;push ax to stack to be used later
+    mov [si],al          ;move the character into the current string position
+    inc si               ;go to next position of string using index
+    jmp reads            ;continue loop as long as input doesn't hove cr
     
 next:
-    mov di,si
-    dec di
-    mov [si],'$'
+    mov [si],'$'         ;terminate the original string
+    mov di,si            ;move current si value into di
+    dec di               ;decrease di to make it show the last character position
+    
     ;printstring msg2
     ;printstring string1
     
-    
-    mov ch,0 
-    mov cl,length
-    mov si, offset rstring1
+    mov ch,0                 ;move length into cx
+    mov cl,length            ;to run loops
+    mov si, offset rstring1  ;make si point to the start of reverse string
 rev:
-    pop ax
-    mov [si],al
-    inc si
-    loop rev
+    pop ax                   ;retrieve character from stack
+    mov [si],al              ;move character to the current reverse string position
+    inc si                   ;onto next position of reverse string
+    loop rev                 ;continue loop until all characters are retrieved
     
-    mov [si],'$'
+    mov [si],'$'             ;end reversed string with $ 
     printstring msg2
     printstring msg5
     printstring rstring1
@@ -70,7 +70,8 @@ rev:
     mov al,length
     inc ax          ; for iterating on half of the string in
     mov dl,02h      ; both odd and even cases,(length+1)/2
-    div dl
+    div dl          ; after these number of iterations
+                    ; having mirrored elements means pallindrome
     
     mov cl,al
     mov si, offset string1
@@ -87,7 +88,6 @@ pal:
     printstring msg3
     jmp end
     
-
 notpal:
     printstring msg4    
     
@@ -96,43 +96,6 @@ end:
     mov ah,4ch           ;end program
     mov dx,00		    ;error code is 0 for successful termination
     int 21h		        ;calling dos
-    
-    
-h2ad proc
-    push ax                      
-    push bx
-    push cx
-    push dx                      ;saving registers for possible later use
-    
-    mov bx,0ah                   ;keeping 10d for continuously dividing and taking decimal digits
-    mov cx,0                     ;keeping counter for number of digits
-    mov dx,0                     ;keeping upper byte clear for proper division
-    
-mark:
-    div bx                       ;divided by 10d continuously 
-    add dl,'0'                   ;adding 30h or '0' to convert digits to ascii
-    push dx                      ;push ascii-converted digit to stack
-    mov dx,0                     ;clearing upper byte for next division
-    inc cx                       ;increasing counter for storing number of digits
-    cmp ax,0                     ;if number is zero,all digits are in stack
-    jne mark                     ;if number isn't 0, we repeat above process
-    
-    
-mark2:
-    pop ax                       ;pop digits from stack
-    mov [si],ax                  ;poped digits are added to the result string
-    inc si                       ;move to next position in string
-    loop mark2                   ;repeat above process until all digits are in
-                                 ;result string
-    
-    mov [si],'$'                 ;append dollar sign to terminate string
-    
-    pop dx
-    pop cx
-    pop bx
-    pop ax                       ;retrieving resister values
-    ret                          ;return 
-       
     
 code ends               ;end of code segment
 end start               ;end of program
